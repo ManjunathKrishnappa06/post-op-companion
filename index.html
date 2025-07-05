@@ -3,32 +3,29 @@
 <head>
   <title>AI Post-Op Monitoring Agent</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; line-height: 1.6; }
-    #status-container { border: 1px solid #ccc; padding: 1em; max-width: 600px; }
-    #start-button { font-size: 1.2em; padding: 10px 20px; cursor: pointer; display: none; }
-    /* This rule hides the chat bubble until we are ready */
-    df-messenger { display: none; }
+    /* ... your styles ... */
   </style>
+  <!-- The Dialogflow bootstrap script CAN stay in the head -->
+  <script src="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js"></script>
 </head>
 <body>
   <h1>AI Post-Op Monitoring Agent</h1>
-  <p>Please share your location to enable location-based emergency services. Your chat will begin after you grant or deny permission.</p>
-
+  <p>...</p>
   <div id="status-container">
-    <p><strong>System Status:</strong> <span id="location-status">Requesting location permission...</span></p>
+    <p><strong>System Status:</strong> <span id="location-status">...</span></p>
     <button id="start-button">Start Check-in</button>
   </div>
 
-  <!-- The Bootstrap script MUST come before the df-messenger tag -->
-  <script src="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js"></script>
-
-  <!-- The messenger tag is here, but hidden by the style rule above -->
+  <!-- The messenger tag is here, hidden -->
   <df-messenger
     chat-title="Post-Op Monitor"
     agent-id="33519cdf-cd2e-417c-9fa4-de5482015ec5"
     language-code="en"
   ></df-messenger>
 
+  <!-- ========================================================== -->
+  <!-- ===== MOVE YOUR SCRIPT TAG TO THE VERY BOTTOM HERE ===== -->
+  <!-- ========================================================== -->
   <script src="script.js"></script>
 </body>
 </html>
