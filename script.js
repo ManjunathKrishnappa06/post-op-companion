@@ -1,41 +1,60 @@
-// First, find the Dialogflow Messenger element on the page
-const dfMessenger = document.querySelector('df-messenger');
+/ This is the main function that will be executed.
+function initializeAgent() {
+  // Find the Dialogflow Messenger element on the page.
+  const dfMessenger = document.querySelector('df-messenger');
 
-// This is the function that will get the location and set the parameters
-const setupGeolocation = () => {
-  // Check if the browser has the Geolocation feature
-  if (navigator.geolocation && dfMessenger) {
-    console.log("df-messenger is loaded. Now attempting to get location.");
+  // If the widget isn't on the page yet, we can't do anything.
+  if (!dfMessenger) {
+    console.error("Dialogflow Messenger element not found on the page.");
+    return;
+  }
+
+  // Now, let's get the location.
+  if (navigator.geolocation) {
+    console.log("Browser supports geolocation. Requesting location...");
 
     navigator.geolocation.getCurrentPosition(
-      // SUCCESS: User clicked "Allow"
+      // SUCCESS case (user allowed location)
       (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        console.log(`Success! Setting queryParams: Lat=${lat}, Lon=${lon}`);
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        console.log(`Location success! Lat: ${latitude}, Lon: ${longitude}`);
 
-        const params = {
-          'user_latitude': lat,
-          'user_longitude': lon
+        const queryParams = {
+          'user_latitude': latitude,
+          'user_longitude': longitude
         };
-        dfMessenger.setQueryParameters(params);
 
+        // Set the parameters on the messenger widget.
+        dfMessenger.setQueryParameters(queryParams);
+
+        // Update the status message on the page.
         const statusElement = document.getElementById('location-status');
-        if (statusElement) statusElement.textContent = "Location shared successfully. The agent is ready.";
+        if (statusElement) {
+          statusElement.textContent = "Location shared successfully. The agent is ready.";
+        }
       },
-      // ERROR: User clicked "Block" or another error occurred
+      // ERROR case (user denied location or an error occurred)
       (error) => {
         console.error(`Geolocation failed: ${error.message}`);
         const statusElement = document.getElementById('location-status');
-        if (statusElement) statusElement.textContent = "Location not shared. Location-based features will be unavailable.";
+        if (statusElement) {
+          statusElement.textContent = "Location not shared. Location-based features are unavailable.";
+        }
       }
     );
   } else {
-    console.log("Geolocation is not supported or df-messenger was not found.");
+    // This runs if the browser is too old.
+    console.log("Geolocation is not supported by this browser.");
+    const statusElement = document.getElementById('location-status');
+    if (statusElement) {
+      statusElement.textContent = "Geolocation is not supported by this browser.";
+    }
   }
-};
+}
 
-// THIS IS THE MOST IMPORTANT PART:
-// We add an event listener. Our `setupGeolocation` function will ONLY run
-// after the df-messenger widget fires an event saying it is fully loaded.
-dfMessenger.addEventListener('df-messenger-loaded', setupGeolocation);
+// --- The Execution Part ---
+// Instead of waiting for an event, we will run our function
+// as soon as the main window of the page has finished loading all its resources.
+// This is a very reliable browser event.
+window.addEventListener('load', initializeAgent);
