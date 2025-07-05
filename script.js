@@ -1,48 +1,59 @@
-/ First, find the Dialogflow Messenger element on the page
-const dfMessenger = document.querySelector('df-messenger');
+// This function will run as soon as the main window is loaded.
+window.addEventListener('load', function () {
 
-// This is the function that will get the location and set the parameters
-const setupAgent = () => {
-  // Check if the browser has the Geolocation feature
-  if (navigator.geolocation && dfMessenger) {
-    console.log("df-messenger is loaded. Now configuring agent.");
+  // --- PART 1: CREATE THE WIDGET WITH A NEW SESSION ID ---
 
-    // =======================================================
-    // == NEW: Generate and set a random session ID here ===
-    // =======================================================
-    const sessionID = Math.random().toString(36).substring(7);
-    dfMessenger.setAttribute('session-id', sessionID);
-    console.log(`New session started with ID: ${sessionID}`);
-    // =======================================================
+  // Generate a new, random session ID every time the page loads.
+  const sessionID = Math.random().toString(36).substring(7);
+  console.log(`Creating new agent session with ID: ${sessionID}`);
 
-    navigator.geolocation.getCurrentPosition(
-      // SUCCESS: User clicked "Allow"
-      (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        console.log(`Success! Setting queryParams: Lat=${lat}, Lon=${lon}`);
+  // Find the container element we made in our HTML.
+  const container = document.getElementById('df-messenger-container');
 
-        const params = {
-          'user_latitude': lat,
-          'user_longitude': lon
-        };
-        dfMessenger.setQueryParameters(params);
+  // Create a brand new <df-messenger> element from scratch.
+  const dfMessenger = document.createElement('df-messenger');
 
-        const statusElement = document.getElementById('location-status');
-        if (statusElement) statusElement.textContent = "Location shared successfully. The agent is ready.";
-      },
-      // ERROR: User clicked "Block" or another error occurred
-      (error) => {
-        console.error(`Geolocation failed: ${error.message}`);
-        const statusElement = document.getElementById('location-status');
-        if (statusElement) statusElement.textContent = "Location not shared. Location-based features will be unavailable.";
-      }
-    );
-  } else {
-    console.log("Geolocation is not supported or df-messenger was not found.");
-  }
-};
+  // Set all the necessary attributes on the new element.
+  dfMessenger.setAttribute('intent', 'WELCOME');
+  dfMessenger.setAttribute('chat-title', 'Post-Op Monitor');
+  dfMessenger.setAttribute('agent-id', '33519cdf-cd2e-417c-9fa4-de5482015ec5'); // Your Agent ID
+  dfMessenger.setAttribute('language-code', 'en');
+  dfMessenger.setAttribute('session-id', sessionID); // <-- The new, random ID is set here!
 
-// This is our reliable trigger. It ensures the setupAgent function
-// ONLY runs after the widget is fully loaded.
-dfMessenger.addEventListener('df-messenger-loaded', setupAgent);
+  // Add the fully constructed element to our container on the page.
+  container.appendChild(dfMessenger);
+
+  // --- PART 2: CONFIGURE GEOLOCATION ---
+  // We will wait for the 'df-messenger-loaded' event to safely configure it.
+
+  dfMessenger.addEventListener('df-messenger-loaded', function () {
+    console.log("df-messenger is loaded. Now configuring geolocation.");
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        // SUCCESS
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          console.log(`Success! Setting queryParams: Lat=${lat}, Lon=${lon}`);
+
+          const params = { 'user_latitude': lat, 'user_longitude': lon };
+          dfMessenger.setQueryParameters(params);
+
+          const statusElement = document.getElementById('location-status');
+          if (statusElement) statusElement.textContent = "Location shared successfully. The agent is ready.";
+        },
+        // ERROR
+        (error) => {
+          console.error(`Geolocation failed: ${error.message}`);
+          const statusElement = document.getElementById('location-status');
+          if (statusElement) statusElement.textContent = "Location not shared. Features unavailable.";
+        }
+      );
+    } else {
+      console.log("Geolocation is not supported.");
+      const statusElement = document.getElementById('location-status');
+      if (statusElement) statusElement.textContent = "Geolocation is not supported.";
+    }
+  });
+});
