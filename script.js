@@ -1,73 +1,53 @@
-// This is a helper function that creates and displays the chat widget.
-// It takes the query parameters as an argument.
-function createAndShowMessenger(queryParams = {}) {
-  // First, we dynamically create the main Dialogflow bootstrap script tag.
-  const bootstrapScript = document.createElement('script');
-  bootstrapScript.src = "https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js";
-  document.head.appendChild(bootstrapScript);
+// This is the main function that runs when the page is fully loaded.
+window.addEventListener('load', function () {
 
-  // We wait for the bootstrap script to load before we create the widget element.
-  bootstrapScript.onload = () => {
-    const container = document.getElementById('df-messenger-container');
-    const dfMessenger = document.createElement('df-messenger');
+  // Create the widget dynamically. This part is correct.
+  const container = document.getElementById('df-messenger-container');
+  const dfMessenger = document.createElement('df-messenger');
 
-    // Generate and set a new session ID for a fresh conversation.
-    const sessionID = Math.random().toString(36).substring(7);
-    dfMessenger.setAttribute('session-id', sessionID);
-    console.log(`Creating agent with new session ID: ${sessionID}`);
+  const sessionID = Math.random().toString(36).substring(7);
+  dfMessenger.setAttribute('session-id', sessionID);
+  dfMessenger.setAttribute('intent', 'WELCOME');
+  dfMessenger.setAttribute('chat-title', 'Post-Op Monitor');
+  dfMessenger.setAttribute('agent-id', '33519cdf-cd2e-417c-9fa4-de5482015ec5');
+  dfMessenger.setAttribute('language-code', 'en');
+  container.appendChild(dfMessenger);
 
-    // Set all the other standard attributes.
-    dfMessenger.setAttribute('intent', 'WELCOME');
-    dfMessenger.setAttribute('chat-title', 'Post-Op Monitor');
-    dfMessenger.setAttribute('agent-id', '33519cdf-cd2e-417c-9fa4-de5482015ec5'); // Your Agent ID
-    dfMessenger.setAttribute('language-code', 'en');
+  // --- THIS IS THE NEW, CORRECT LOGIC ---
+  // We listen for the 'df-request-fulfilled' event. This event fires
+  // right after the agent sends its first "Welcome" message.
+  dfMessenger.addEventListener('df-request-fulfilled', function (event) {
 
-    // Add the fully constructed element to our container on the page.
-    container.appendChild(dfMessenger);
+    // At this point, we can start the geolocation process.
+    const statusElement = document.getElementById('location-status');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        // SUCCESS: We got the location.
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          console.log(`Location success: Lat=${lat}, Lon=${lon}`);
+          if (statusElement) statusElement.textContent = "Location shared. Ready to assist.";
 
-    // Now that the element exists, we can safely set the query parameters.
-    if (Object.keys(queryParams).length > 0) {
-       dfMessenger.setQueryParameters(queryParams);
-       console.log("Query parameters have been set.", queryParams);
+          // THIS IS THE KEY: We create a new event to send back to the agent.
+          // This event will trigger an intent in Dialogflow and pass the
+          // parameters at the same time.
+          const locationEvent = {
+            event: 'event-location-received',
+            parameters: {
+              user_latitude: lat.toString(),
+              user_longitude: lon.toString()
+            }
+          };
+          // Send the event to the agent.
+          dfMessenger.sendRequest('event', locationEvent);
+        },
+        // ERROR: We could not get the location.
+        (error) => {
+          console.error(`Geolocation error: ${error.message}`);
+          if (statusElement) statusElement.textContent = "Location not shared. Features unavailable.";
+        }
+      );
     }
-  };
-}
-
-// This is the main function that runs when the page loads.
-function initialize() {
-  const statusElement = document.getElementById('location-status');
-
-  if (navigator.geolocation) {
-    console.log("Browser supports geolocation. Requesting permission...");
-    navigator.geolocation.getCurrentPosition(
-      // SUCCESS: We have the location! NOW we can build the widget.
-      (position) => {
-        if (statusElement) statusElement.textContent = "Location acquired. Loading agent...";
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-
-        const params = {
-          'user_latitude': lat.toString(),
-          'user_longitude': lon.toString()
-        };
-        // Call our helper function and pass the location parameters.
-        createAndShowMessenger(params);
-      },
-      // ERROR: We don't have location. Build the widget without it.
-      (error) => {
-        console.error(`Geolocation failed: ${error.message}`);
-        if (statusElement) statusElement.textContent = "Location not shared. Loading agent...";
-        // Call our helper function with no parameters.
-        createAndShowMessenger();
-      }
-    );
-  } else {
-    // Geolocation is not supported. Build the widget without it.
-    console.log("Geolocation is not supported by this browser.");
-    if (statusElement) statusElement.textContent = "Geolocation not supported. Loading agent...";
-    createAndShowMessenger();
-  }
-}
-
-// Start the whole process when the page finishes loading.
-window.addEventListener('load', initialize);
+  });
+});
