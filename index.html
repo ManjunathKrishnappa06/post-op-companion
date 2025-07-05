@@ -3,20 +3,26 @@
 <head>
   <title>AI Post-Op Monitoring Agent</title>
   <style>
-    /* ... your styles ... */
+    body { font-family: sans-serif; padding: 2em; line-height: 1.6; }
+    #status-container { border: 1px solid #ccc; padding: 1em; max-width: 600px; }
+    #start-button { font-size: 1.2em; padding: 10px 20px; cursor: pointer; display: none; }
+    df-messenger { display: none; }
   </style>
-  <!-- The Dialogflow bootstrap script CAN stay in the head -->
-  <script src="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js"></script>
 </head>
+
 <body>
   <h1>AI Post-Op Monitoring Agent</h1>
-  <p>...</p>
+  <p>This is a demonstration of my conversational agent. This agent can provide location-based emergency room suggestions if a critical symptom is reported.</p>
+
   <div id="status-container">
-    <p><strong>System Status:</strong> <span id="location-status">...</span></p>
+    <p><strong>System Status:</strong> <span id="location-status">Initializing...</span></p>
     <button id="start-button">Start Check-in</button>
   </div>
 
-  <!-- The messenger tag is here, hidden -->
+  <!-- The Dialogflow bootstrap script -->
+  <script src="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js"></script>
+
+  <!-- The messenger tag is here, but hidden -->
   <df-messenger
     chat-title="Post-Op Monitor"
     agent-id="33519cdf-cd2e-417c-9fa4-de5482015ec5"
@@ -24,8 +30,71 @@
   ></df-messenger>
 
   <!-- ========================================================== -->
-  <!-- ===== MOVE YOUR SCRIPT TAG TO THE VERY BOTTOM HERE ===== -->
+  <!-- === ALL JAVASCRIPT LOGIC IS NOW SAFELY INSIDE HERE === -->
   <!-- ========================================================== -->
-  <script src="script.js"></script>
+  <script>
+    // We wait for the entire window to be fully loaded.
+    window.addEventListener('load', function() {
+      const statusElement = document.getElementById('location-status');
+      const startButton = document.getElementById('start-button');
+      const dfMessenger = document.querySelector('df-messenger');
+
+      let locationParams = null; // This will hold our location data.
+
+      // This function starts the chat.
+      function startChat() {
+        console.log("Start button clicked. Initializing chat.");
+
+        const sessionID = Math.random().toString(36).substring(7);
+        dfMessenger.setAttribute('session-id', sessionID);
+
+        dfMessenger.style.display = 'block';
+        dfMessenger.renderChat();
+
+        const welcomeEvent = {
+          event: 'WELCOME_WITH_PARAMS', 
+        };
+
+        if (locationParams) {
+          welcomeEvent.parameters = locationParams;
+          console.log("Sending WELCOME event with location:", locationParams);
+        } else {
+          console.log("Sending WELCOME event without location.");
+        }
+
+        dfMessenger.sendRequest('event', welcomeEvent);
+
+        startButton.style.display = 'none';
+        statusElement.textContent = "Chat started. Please use the widget below.";
+      }
+
+      // Main Logic: Ask for location first.
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          // SUCCESS
+          (position) => {
+            statusElement.textContent = "Location acquired. Click 'Start Check-in' to begin.";
+            locationParams = {
+              'user_latitude': position.coords.latitude.toString(),
+              'user_longitude': position.coords.longitude.toString()
+            };
+            startButton.style.display = 'block';
+          },
+          // ERROR
+          (error) => {
+            statusElement.innerHTML = `Location not shared. You can still begin, but emergency features will be disabled.`;
+            startButton.style.display = 'block';
+          }
+        );
+      } else {
+        statusElement.textContent = "Geolocation not supported. Click 'Start Check-in' to begin.";
+        startButton.style.display = 'block';
+      }
+
+      // Add the click listener to our button.
+      startButton.addEventListener('click', startChat);
+    });
+  </script>
+
 </body>
 </html>
