@@ -37,7 +37,7 @@ window.addEventListener('load', function () {
           const lon = position.coords.longitude;
           console.log(`Success! Setting queryParams: Lat=${lat}, Lon=${lon}`);
 
-          const params = { 'user_latitude': lat, 'user_longitude': lon };
+          const params = { 'user_latitude': lat.toString(), 'user_longitude': lon.toString() };
           dfMessenger.setQueryParameters(params);
 
           const statusElement = document.getElementById('location-status');
