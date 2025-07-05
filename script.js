@@ -1,40 +1,68 @@
-// This is a simple flag to make sure we only do this once.
-let locationSet = false;
+// This is the main function that runs when the page is loaded.
+window.addEventListener('load', function() {
+  
+  const statusElement = document.getElementById('status');
+  const startButton = document.getElementById('start-button');
+  
+  // STEP 1: Define where to go after we get the location.
+  // This is the URL of the standalone Dialogflow Messenger.
+  const messengerBaseUrl = 'https://dialogflow.cloud.google.com/v1/integrations/messenger/chat';
+  
+  // These are the details for YOUR specific agent.
+  const agentDetails = {
+    project: 'manjunath-vertex-ai',          // Your GCP Project ID
+    agent: '33519cdf-cd2e-417c-9fa4-de5482015ec5', // Your Agent ID
+    location: 'global'                       // Or your agent's region e.g. 'us-central1'
+  };
+  
+  // This is the function that builds the final URL and sends the user to the chat.
+  function redirectToChat(latitude, longitude) {
+    // Generate a fresh session ID for a new conversation.
+    const sessionId = Math.random().toString(36).substring(7);
+    
+    // Start building the URL.
+    let fullUrl = `${messengerBaseUrl}?project=${agentDetails.project}&agent=${agentDetails.agent}&location=${agentDetails.location}&sessionId=${sessionId}`;
+    
+    // If we have location data, add it to the URL as a query parameter.
+    if (latitude && longitude) {
+      const queryParams = {
+        user_latitude: latitude.toString(),
+        user_longitude: longitude.toString()
+      };
+      // URL-encode the parameters so they are safe to use in a URL.
+      fullUrl += `&queryParams=${encodeURIComponent(JSON.stringify(queryParams))}`;
+    }
+    
+    // Redirect the browser to the new URL.
+    window.location.href = fullUrl;
+  }
 
-// We listen for the 'df-response-received' event. This fires every
-// time the user gets a message back from the agent.
-const dfMessenger = document.querySelector('df-messenger');
-dfMessenger.addEventListener('df-response-received', function () {
-
-  // If we haven't set the location yet, and if geolocation is available...
-  if (!locationSet && navigator.geolocation) {
-
+  // STEP 2: Ask for the location.
+  if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      // SUCCESS: We got the location.
+      // SUCCESS: User clicked "Allow"
       (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        console.log(`Location success! Lat=${lat}, Lon=${lon}. Setting parameters...`);
-
-        // Set the parameters. This will apply to the *next* message the user sends.
-        dfMessenger.setQueryParameters({
-          'user_latitude': lat.toString(),
-          'user_longitude': lon.toString()
-        });
-
-        // Flip the flag so we don't do this again.
-        locationSet = true;
-
-        const statusElement = document.getElementById('location-status');
-        if (statusElement) statusElement.textContent = "Location shared successfully. The agent is ready.";
+        statusElement.textContent = "Location acquired. Ready to begin.";
+        startButton.style.display = 'block'; // Show the button
+        
+        // When the user clicks the button, redirect them with their location.
+        startButton.onclick = function() {
+          redirectToChat(position.coords.latitude, position.coords.longitude);
+        };
       },
-      // ERROR: Handle failure.
+      // ERROR: User clicked "Block"
       (error) => {
-        console.error(`Geolocation error: ${error.message}`);
-        locationSet = true; // Also flip the flag on error so we don't keep trying.
-        const statusElement = document.getElementById('location-status');
-        if (statusElement) statusElement.textContent = "Location not shared.";
+        statusElement.innerHTML = `Location not shared. You can still proceed, but emergency features will be disabled.`;
+        startButton.style.display = 'block'; // Show the button anyway
+        
+        // When the user clicks the button, redirect them without location.
+        startButton.onclick = function() {
+          redirectToChat(null, null);
+        };
       }
     );
+  } else {
+    // Geolocation is not supported at all.
+    statusElement.textContent = "Geolocation is not supported by this browser.";
   }
 });
