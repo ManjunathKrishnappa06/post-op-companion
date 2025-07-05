@@ -1,100 +1,45 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>AI Post-Op Monitoring Agent</title>
-  <style>
-    body { font-family: sans-serif; padding: 2em; line-height: 1.6; }
-    #status-container { border: 1px solid #ccc; padding: 1em; max-width: 600px; }
-    #start-button { font-size: 1.2em; padding: 10px 20px; cursor: pointer; display: none; }
-    df-messenger { display: none; }
-  </style>
-</head>
+<!-- 1. The Dialogflow Messenger Library -->
+<script src="https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1"></script>
 
-<body>
-  <h1>AI Post-Op Monitoring Agent</h1>
-  <p>This is a demonstration of my conversational agent. This agent can provide location-based emergency room suggestions if a critical symptom is reported.</p>
+<!-- 2. The Dialogflow Messenger Element -->
+<df-messenger
+  project-id="manjunath-vertex-ai"
+  agent-id="33519cdf-cd2e-417c-9fa4-de5482015ec5"
+  language-code="en">
+</df-messenger>
 
-  <div id="status-container">
-    <p><strong>System Status:</strong> <span id="location-status">Initializing...</span></p>
-    <button id="start-button">Start Check-in</button>
-  </div>
+<!-- 3. Our Custom Geolocation Script -->
+<script>
+  // Wait for the Dialogflow Messenger element to be ready
+  document.addEventListener('df-messenger-loaded', function (event) {
+    const dfMessenger = document.querySelector('df-messenger');
 
-  <!-- The Dialogflow bootstrap script -->
-  <script src="https://www.gstatic.com/dialogflow-console/fast/df-messenger/prod/v1/df-messenger.js"></script>
+    // Listen for the chat window to be opened by the user
+    dfMessenger.addEventListener('df-chat-opened', function (event) {
+      console.log("Chat opened. Attempting to get location...");
 
-  <!-- The messenger tag is here, but hidden -->
-  <df-messenger
-    chat-title="Post-Op Monitor"
-    agent-id="33519cdf-cd2e-417c-9fa4-de5482015ec5"
-    language-code="en"
-  ></df-messenger>
-
-  <!-- ========================================================== -->
-  <!-- === ALL JAVASCRIPT LOGIC IS NOW SAFELY INSIDE HERE === -->
-  <!-- ========================================================== -->
-  <script>
-    // We wait for the entire window to be fully loaded.
-    window.addEventListener('load', function() {
-      const statusElement = document.getElementById('location-status');
-      const startButton = document.getElementById('start-button');
-      const dfMessenger = document.querySelector('df-messenger');
-
-      let locationParams = null; // This will hold our location data.
-
-      // This function starts the chat.
-      function startChat() {
-        console.log("Start button clicked. Initializing chat.");
-
-        const sessionID = Math.random().toString(36).substring(7);
-        dfMessenger.setAttribute('session-id', sessionID);
-
-        dfMessenger.style.display = 'block';
-        dfMessenger.renderChat();
-
-        const welcomeEvent = {
-          event: 'WELCOME_WITH_PARAMS', 
-        };
-
-        if (locationParams) {
-          welcomeEvent.parameters = locationParams;
-          console.log("Sending WELCOME event with location:", locationParams);
-        } else {
-          console.log("Sending WELCOME event without location.");
-        }
-
-        dfMessenger.sendRequest('event', welcomeEvent);
-
-        startButton.style.display = 'none';
-        statusElement.textContent = "Chat started. Please use the widget below.";
-      }
-
-      // Main Logic: Ask for location first.
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          // SUCCESS
           (position) => {
-            statusElement.textContent = "Location acquired. Click 'Start Check-in' to begin.";
-            locationParams = {
-              'user_latitude': position.coords.latitude.toString(),
-              'user_longitude': position.coords.longitude.toString()
-            };
-            startButton.style.display = 'block';
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            console.log(`Location obtained: ${lat}, ${lng}`);
+
+            // Send location to Dialogflow as session parameters
+            dfMessenger.setSessionParameters({
+              latitude: lat,
+              longitude: lng
+            });
           },
-          // ERROR
           (error) => {
-            statusElement.innerHTML = `Location not shared. You can still begin, but emergency features will be disabled.`;
-            startButton.style.display = 'block';
+            console.error("Geolocation error: ", error.message);
+            dfMessenger.setSessionParameters({ location_permission: 'denied' });
           }
         );
       } else {
-        statusElement.textContent = "Geolocation not supported. Click 'Start Check-in' to begin.";
-        startButton.style.display = 'block';
+        console.log("Geolocation is not supported by this browser.");
+        dfMessenger.setSessionParameters({ location_permission: 'unsupported' });
       }
-
-      // Add the click listener to our button.
-      startButton.addEventListener('click', startChat);
     });
-  </script>
-
-</body>
-</html>
+  });
+</script>
