@@ -1,55 +1,58 @@
-// This code will run automatically once the entire webpage has loaded.
-document.addEventListener("DOMContentLoaded", function() {
-
-  // First, find the Dialogflow Messenger chat widget on the page.
+// This is the main function that will be executed when the page loads.
+function initializeAgent() {
+  // Find the Dialogflow Messenger element on the page.
   const dfMessenger = document.querySelector('df-messenger');
 
-  // Check if the user's browser has the Geolocation feature.
+  // If the widget isn't on the page yet, we can't do anything.
+  if (!dfMessenger) {
+    console.error("Dialogflow Messenger element not found on the page.");
+    return;
+  }
+
+  // Now, let's get the location.
   if (navigator.geolocation) {
+    console.log("Browser supports geolocation. Requesting location...");
 
-    console.log("Browser supports geolocation. Asking for user permission...");
-
-    // This command triggers the browser's permission pop-up.
     navigator.geolocation.getCurrentPosition(
-
-      // ---- This part runs if the user clicks "Allow" ----
+      // SUCCESS case: User allowed location sharing.
       (position) => {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
+        console.log(`Location success! Lat: ${latitude}, Lon: ${longitude}`);
 
-        console.log(`Success! Location acquired: Lat=${latitude}, Lon=${longitude}`);
-
-        // This is the most important command. We are telling the Dialogflow
-        // widget to attach these parameters to every message it sends.
         const queryParams = {
           'user_latitude': latitude,
           'user_longitude': longitude
         };
+
+        // Set the parameters on the messenger widget.
         dfMessenger.setQueryParameters(queryParams);
 
-        // Update the status message on the webpage to give user feedback.
+        // Update the status message on the webpage for user feedback.
         const statusElement = document.getElementById('location-status');
         if (statusElement) {
           statusElement.textContent = "Location shared successfully. The agent is ready.";
         }
       },
-
-      // ---- This part runs if the user clicks "Block" or an error occurs ----
+      // ERROR case: User denied location or another error occurred.
       (error) => {
         console.error(`Geolocation failed: ${error.message}`);
-        // Update the status message to inform the user.
         const statusElement = document.getElementById('location-status');
         if (statusElement) {
-          statusElement.textContent = "Location not shared. Location-based features will be unavailable.";
+          statusElement.textContent = "Location not shared. Location-based features are unavailable.";
         }
       }
     );
   } else {
-    // This runs if the browser is very old and doesn't support geolocation.
+    // This runs if the browser is too old to support geolocation.
     console.log("Geolocation is not supported by this browser.");
     const statusElement = document.getElementById('location-status');
     if (statusElement) {
       statusElement.textContent = "Geolocation is not supported by this browser.";
     }
   }
-});
+}
+
+// This is the trigger. We wait for the entire window, including scripts
+// and images, to be fully loaded before running our initialization function.
+window.addEventListener('load', initializeAgent);
